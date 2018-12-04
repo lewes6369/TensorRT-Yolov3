@@ -20,4 +20,4 @@ cd ..
 ./install/runNet --input=./test.jpg
 ```
 ### More Details
-    see github https://github.com/lewes6369/tensorRTWrapper
+see link [TensorRTWrapper](https://github.com/lewes6369/tensorRTWrapper)
