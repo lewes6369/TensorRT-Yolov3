@@ -11,7 +11,6 @@
     CUDA 9.2
 
 ## Run Sample
-
 ```bash
 #for classification
 cd sample
@@ -20,7 +19,5 @@ cd build && cmake .. && make && make install
 cd ..
 ./install/runNet --input=./test.jpg
 ```
-
 ## More Details
-
     see github https://github.com/lewes6369/tensorRTWrapper
