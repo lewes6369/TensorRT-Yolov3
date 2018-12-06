@@ -21,50 +21,10 @@ find_package(CUDA REQUIRED)
 
 set(CUDA_VERBOSE_BUILD ON)
 
-# list(APPEND GPU_ARCHS
-#     35
-#     53
-#     61
-#     70
-#     75
-#     )
-
-# # Generate SASS for each architecture
-# foreach(arch ${GPU_ARCHS})
-#     set(GENCODES "${GENCODES} -gencode arch=compute_${arch},code=sm_${arch}")
-# endforeach()
-# # Generate PTX for the last architecture
-# list(GET GPU_ARCHS -1 LATEST_GPU_ARCH)
-# set(GENCODES "${GENCODES} -gencode arch=compute_${LATEST_GPU_ARCH},code=compute_${LATEST_GPU_ARCH}")
-
-# set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} \
-#     -cudart static \
-#     -lineinfo \
-#     -g \
-#     --expt-extended-lambda \
-#     ${GENCODES} \
-# ")
 
 # Specify the cuda host compiler to use the same compiler as cmake.
 set(CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
 
-# # CUDNN
-# set(CUDNN_ROOT_DIR "" CACHE PATH "Folder contains NVIDIA cuDNN")
-# find_path(CUDNN_INCLUDE_DIR cudnn.h
-#     HINTS ${CUDNN_ROOT_DIR} ${CUDA_TOOLKIT_ROOT_DIR}
-#     PATH_SUFFIXES cuda/include include)
-# find_library(CUDNN_LIBRARY cudnn
-#     HINTS ${CUDNN_ROOT_DIR} ${CUDA_TOOLKIT_ROOT_DIR}
-#     PATH_SUFFIXES lib lib64 cuda/lib cuda/lib64 lib/x64)
-# find_package_handle_standard_args(
-#     CUDNN DEFAULT_MSG CUDNN_INCLUDE_DIR CUDNN_LIBRARY)
-
-# if(NOT CUDNN_FOUND)
-#   message(WARNING
-#       "Cudnn cannot be found. TensorRT depends explicitly "
-#       "on cudnn so you should consider installing it.")
-#   return()
-# endif()
 
 # TensorRT
 find_path(TENSORRT_INCLUDE_DIR NvInfer.h

@@ -9,7 +9,8 @@ namespace Tn
     const std::string INPUT_CAFFEMODEL = "yolov3.caffemodel";
     const std::string INPUT_IMAGE = "test.jpg";
     const std::string CALIBRATION_LIST = "";
-    const std::string MODE = "INT8";
+    const std::string MODE = "fp32";
+    const std::string OUTPUTS= "layer82-conv,layer94-conv,layer106-conv";
     const int INPUT_WIDTH = 416;
     const int INPUT_HEIGHT = 416;
 }
