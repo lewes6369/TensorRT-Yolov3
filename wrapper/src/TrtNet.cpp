@@ -231,10 +231,11 @@ namespace Tn
 
         for (size_t bindingIdx = mTrtInputCount; bindingIdx < mTrtBindBufferSize.size(); ++bindingIdx)
         {
-            char * output = static_cast<char *>(outputData);
             auto size = mTrtBindBufferSize[bindingIdx];
-            CUDA_CHECK(cudaMemcpyAsync(output, mTrtCudaBuffer[bindingIdx], size, cudaMemcpyDeviceToHost, mTrtCudaStream));
-            output +=size;
+            CUDA_CHECK(cudaMemcpyAsync(outputData, mTrtCudaBuffer[bindingIdx], size, cudaMemcpyDeviceToHost, mTrtCudaStream));
+            outputData = (char *)outputData + size;
+            //CUDA_CHECK(cudaMemcpyAsync(outputData, mTrtCudaBuffer[bindingIdx], size, cudaMemcpyDeviceToHost, mTrtCudaStream));
+            //outputData +=size;
         }
 
         mTrtIterationTime ++ ;

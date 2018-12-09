@@ -6,33 +6,45 @@
 #include "TrtNet.h"
 #include "argsParser.h"
 #include "configs.h"
+#include <chrono>
+#include "YoloLayer.h"
 
 using namespace std;
 using namespace argsParser;
 using namespace Tn;
 
-vector<float> prepareImage(const string& fileName)
+std::vector<float> prepareImage(const string& fileName,int* width = nullptr,int* height = nullptr)
 {
     using namespace cv;
 
     Mat img = imread(fileName);
     if(img.data== nullptr)
     {
-        cout << "can not open image :" << fileName  << endl;
+        std::cout << "can not open image :" << fileName  << std::endl;
         return {}; 
     } 
+
+    if(width)
+        *width = img.cols;
+
+    if(height)
+        *height = img.rows;
 
     int c = parser::getIntValue("C");
     int h = parser::getIntValue("H");
     int w = parser::getIntValue("W");  
 
-    cv::Mat resized;
     float scale = min(float(w)/img.cols,float(h)/img.rows);
     auto scaleSize = cv::Size(img.cols * scale,img.rows * scale);
-    cv::resize(img, resized, cv::Size(w,h),(0.0),(0.0),INTER_CUBIC);
 
+    cv::Mat rgb ;
+    cv::cvtColor(img, rgb, CV_BGR2RGB);
+    cv::Mat resized;
+    cv::resize(rgb, resized,scaleSize,0,0,INTER_CUBIC);
+
+    cv::Mat cropped(h, w,CV_8UC3, 127);
     Rect rect((w- scaleSize.width)/2, (h-scaleSize.height)/2, scaleSize.width,scaleSize.height); 
-    cv::Mat cropped = resized(rect);
+    resized.copyTo(cropped(rect));
 
     cv::Mat img_float;
     if (INPUT_CHANNEL == 3)
@@ -44,7 +56,7 @@ vector<float> prepareImage(const string& fileName)
     cv::Mat input_channels[INPUT_CHANNEL];
     cv::split(img_float, input_channels);
 
-    vector<float> result(h*w*c);
+    std::vector<float> result(h*w*c);
     auto data = result.data();
     int channelLength = h * w;
     for (int i = 0; i < c; ++i) {
@@ -78,6 +90,7 @@ int main( int argc, char* argv[] )
     parser::ADD_ARG_STRING("calib",Desc("calibration image List"),DefaultValue(CALIBRATION_LIST),ValueDesc("file"));
     parser::ADD_ARG_STRING("mode",Desc("runtime mode"),DefaultValue(MODE), ValueDesc("fp32/fp16/int8"));
     parser::ADD_ARG_STRING("outputNodes",Desc("output nodes name"),DefaultValue(OUTPUTS));
+    parser::ADD_ARG_INT("class",Desc("num of classes"),DefaultValue(to_string(DETECT_CLASSES)));
 
     if(argc < 2){
         parser::printDesc();
@@ -130,24 +143,37 @@ int main( int argc, char* argv[] )
     auto outputNames = split(outputNodes,',');
 
     trtNet net(deployFile,caffemodelFile,outputNames,calibData,run_mode);
+    //trtNet net("yolov3_fp32.engine");
+    net.saveEngine("yolov3_fp32.engine");
 
-    string imageName = parser::getStringValue("input");
-    auto inputData = prepareImage(imageName);
+    string inputFileName = parser::getStringValue("input");
+    int width,height;
+    auto inputData = prepareImage(inputFileName,&width,&height);
+
     int outputCount = net.getOutputSize()/sizeof(float);
     unique_ptr<float[]> outputData(new float[outputCount]);
 
+    //for (int i = 0;i < 100 ;++i)
     net.doInference(inputData.data(), outputData.get());
-
+    
     net.printTime();
 
-    auto result = outputData.get();
-    cout << "*************result************" << endl;
-    //result
-    for (int i = 0 ;i< outputCount; ++i)
-        cout << " " << result[i] << " " << endl;
+    int nboxes = 0;
+    int classes = parser::getIntValue("class");
+    int h = parser::getIntValue("H");
+    int w = parser::getIntValue("W");  
+    auto t_start = std::chrono::high_resolution_clock::now();
+    auto detects = get_detections(outputData.get(),width,height,h,w,&nboxes,classes);
+    auto t_end = std::chrono::high_resolution_clock::now();
+    float total = std::chrono::duration<float, std::milli>(t_end - t_start).count();
+    std::cout << "Time taken for yolo is " << total << " ms." << std::endl;
     
-    //ADD: need to do yolo layer
-    //processs yolo
+    cv::Mat img = cv::imread(inputFileName);
+    printBox(detects,width,height,nboxes,classes,&img);
+    free_detections(detects,nboxes);
+    cv::imwrite("result.jpg",img);
+    cv::imshow("result",img);
+    cv::waitKey(0);
 
     return 0;
 }
