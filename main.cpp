@@ -142,9 +142,15 @@ int main( int argc, char* argv[] )
     string outputNodes = parser::getStringValue("outputNodes");
     auto outputNames = split(outputNodes,',');
 
+    
+    //can load from file
+    string saveName = "yolov3_" + mode + ".engine";
+#ifdef LOAD_FROM_ENGINE    
+    trtNet net(saveName);
+#else
     trtNet net(deployFile,caffemodelFile,outputNames,calibData,run_mode);
-    //trtNet net("yolov3_fp32.engine");
-    net.saveEngine("yolov3_fp32.engine");
+    net.saveEngine(saveName);
+#endif
 
     string inputFileName = parser::getStringValue("input");
     int width,height;
@@ -152,7 +158,6 @@ int main( int argc, char* argv[] )
 
     int outputCount = net.getOutputSize()/sizeof(float);
     unique_ptr<float[]> outputData(new float[outputCount]);
-
     //for (int i = 0;i < 100 ;++i)
     net.doInference(inputData.data(), outputData.get());
     

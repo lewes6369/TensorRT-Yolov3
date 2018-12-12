@@ -30,20 +30,14 @@ layer make_yolo_layer(int batch,int w,int h,int n,int total,int classes)
         l.biases[i] = ANCHORS[i];
     }
     l.mask = (int*)calloc(n,sizeof(int));
-    if(l.w == 13){
-        int j = 6;
-        for(int i =0;i<l.n;++i)
-            l.mask[i] = j++;
-    }
-    if(l.w == 26){
-        int j = 3;
-        for(int i =0;i<l.n;++i)
-            l.mask[i] = j++;
-    }
-    if(l.w == 52){
-        int j = 0;
-        for(int i =0;i<l.n;++i)
-            l.mask[i] = j++;
+
+    for(int i = 0;i< YOLO_LAYER_COUNT;++i)
+    {
+        if (l.w == YOLO_KERNEL_SIZE[i])
+        {
+            for (int j = 0;j < l.n ;++j)
+                l.mask[j] = YOLO_MASK[i][j];
+        }
     }
     l.outputs = l.inputs;
     l.output = (float*)calloc(batch*l.outputs,sizeof(float));
@@ -115,9 +109,8 @@ int yolo_num_detections(layer l,float thresh)
 
 int num_detections(vector<layer> layers_params,float thresh)
 {
-    int i;
     int s=0;
-    for(i=0;i<layers_params.size();++i){
+    for(unsigned int i=0;i<layers_params.size();++i){
         layer l  = layers_params[i];
         s += yolo_num_detections(l,thresh);
     }
@@ -128,11 +121,10 @@ int num_detections(vector<layer> layers_params,float thresh)
 detection* make_network_boxes(vector<layer> layers_params,float thresh,int* num)
 {
     layer l = layers_params[0];
-    int i;
     int nboxes = num_detections(layers_params,thresh);
     if(num) *num = nboxes;
     detection *dets = (detection*)calloc(nboxes,sizeof(detection));
-    for(i=0;i<nboxes;++i){
+    for(int i=0;i<nboxes;++i){
         dets[i].prob = (float*)calloc(l.classes,sizeof(float));
     }
     return dets;
@@ -212,7 +204,7 @@ detection* get_network_boxes(vector<layer> layers_params,
     detection *dets = make_network_boxes(layers_params,thresh,num);
 
     auto result = dets;
-    for(int j=0;j<layers_params.size();++j){
+    for(unsigned int j=0;j<layers_params.size();++j){
         layer l = layers_params[j];
         int count = get_yolo_detections(l,img_w,img_h,net_w,net_h,thresh,dets);
         dets += count;
@@ -227,19 +219,13 @@ detection* get_detections(const void* data,int img_w,int img_h,int net_w,int net
     vector<layer> layers_params;
     layers_params.clear();
 
-    static std::pair<int,int> yolo_size[3] = {
-        {13,13},
-        {26,26},
-        {52,52}
-    };
-
     const float* f_data  = static_cast<const float*>(data);
 
-    for(int i=0;i< 3;++i){
-        int width = yolo_size[i].first;
-        int height = yolo_size[i].second;
-        int chn_size =  width*height*(3*(classes + 4 + 1));
-        layer l_params = make_yolo_layer(1,width,height,3,9,classes);
+    for(int i=0;i< YOLO_LAYER_COUNT;++i){
+        int width = YOLO_KERNEL_SIZE[i];
+        int height = width;
+        int chn_size =  width*height*(YOLO_LAYER_COUNT*(classes + 4 + 1));
+        layer l_params = make_yolo_layer(1,width,height,YOLO_LAYER_COUNT,CLUSTER_NUM,classes);
         layers_params.push_back(l_params);
         forward_yolo_layer(f_data ,l_params);
         f_data = f_data + chn_size;
@@ -249,7 +235,7 @@ detection* get_detections(const void* data,int img_w,int img_h,int net_w,int net
     detection* dets = get_network_boxes(layers_params,img_w,img_h,net_w,net_h,IGNORE_THRESH,nboxes);
     std::cout<<*nboxes<<std::endl;
     //release layer memory
-    for(int index =0;index < layers_params.size();++index){
+    for(unsigned int  index =0;index < layers_params.size();++index){
         free_yolo_layer(layers_params[index]);
     }
 
