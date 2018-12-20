@@ -14,7 +14,7 @@ namespace Tn
     const int INPUT_WIDTH = 416;
     const int INPUT_HEIGHT = 416;
 
-    const int DETECT_CLASSES = 20;
+    const int DETECT_CLASSES = 80;
 }
 
 #endif

@@ -89,7 +89,7 @@ int main( int argc, char* argv[] )
     parser::ADD_ARG_INT("W",Desc("width"),DefaultValue(to_string(INPUT_WIDTH)));
     parser::ADD_ARG_STRING("calib",Desc("calibration image List"),DefaultValue(CALIBRATION_LIST),ValueDesc("file"));
     parser::ADD_ARG_STRING("mode",Desc("runtime mode"),DefaultValue(MODE), ValueDesc("fp32/fp16/int8"));
-    parser::ADD_ARG_STRING("outputNodes",Desc("output nodes name"),DefaultValue(OUTPUTS));
+    parser::ADD_ARG_STRING("outputs",Desc("output nodes name"),DefaultValue(OUTPUTS));
     parser::ADD_ARG_INT("class",Desc("num of classes"),DefaultValue(to_string(DETECT_CLASSES)));
 
     if(argc < 2){
@@ -168,7 +168,7 @@ int main( int argc, char* argv[] )
     int h = parser::getIntValue("H");
     int w = parser::getIntValue("W");  
     auto t_start = std::chrono::high_resolution_clock::now();
-    auto detects = get_detections(outputData.get(),width,height,h,w,&nboxes,classes);
+    auto detects = get_detections(outputData.get(),width,height,w,h,&nboxes,classes);
     auto t_end = std::chrono::high_resolution_clock::now();
     float total = std::chrono::duration<float, std::milli>(t_end - t_start).count();
     std::cout << "Time taken for yolo is " << total << " ms." << std::endl;
@@ -179,6 +179,7 @@ int main( int argc, char* argv[] )
     cv::imwrite("result.jpg",img);
     cv::imshow("result",img);
     cv::waitKey(0);
+
 
     return 0;
 }
