@@ -7,7 +7,7 @@
 ### Test Enviroments
 
     Ubuntu  16.04
-    TensorRT 4.0.1.6
+    TensorRT 5.0.2.6/4.0.1.6
     CUDA 9.2
 
 ### Models
@@ -47,7 +47,7 @@ cd ..
 ./install/runYolov3 --caffemodel=./yolov3_608.caffemodel --prototxt=./yolov3_608.prototxt --input=./test.jpg --W=608 --H=608 --class=80 --mode=int8 --calib=./calib_sample.txt
 
 #for yolov3-416 (need to modify include/YoloConfigs for YoloKernel)
-./install/runYolov3 --caffemodel=./yolov3_416.caffemodel --prototxt=./yolov3_416.prototxt --input=./test.jpg --W=416 --H=416 --class=20
+./install/runYolov3 --caffemodel=./yolov3_416.caffemodel --prototxt=./yolov3_416.prototxt --input=./test.jpg --W=416 --H=416 --class=80
 ```
 
 
