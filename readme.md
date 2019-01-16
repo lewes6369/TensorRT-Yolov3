@@ -12,9 +12,12 @@
 
 ### Models
 
-Download the model converted by official model [here](https://pan.baidu.com/s/1VBqEmUPN33XrAol3ScrVQA) pwd: gbue
+Download the caffe model converted by official model:
+Baidu Cloud [here](https://pan.baidu.com/s/1VBqEmUPN33XrAol3ScrVQA) pwd: gbue
+Google Drive [here](https://drive.google.com/open?id=18OxNcRrDrCUmoAMgngJlhEglQ1Hqk_NJ)
 
-If run model trained by yourself, modify the prototxt the last layer as:(the bottoms are the yolo input layers)
+If run model trained by yourself,comment the "upsample_param" blocks ,and modify the prototxt the last layer as:
+(the bottoms are the yolo input layers)
 ```
 layer {
     bottom: "layer82-conv"
