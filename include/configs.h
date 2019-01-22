@@ -8,6 +8,7 @@ namespace Tn
     const std::string INPUT_PROTOTXT ="yolov3_trt.prototxt";
     const std::string INPUT_CAFFEMODEL = "yolov3.caffemodel";
     const std::string INPUT_IMAGE = "test.jpg";
+    const std::string EVAL_LIST = "";
     const std::string CALIBRATION_LIST = "";
     const std::string MODE = "fp32";
     const std::string OUTPUTS= "yolo-det";//layer82-conv,layer94-conv,layer106-conv

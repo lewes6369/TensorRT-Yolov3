@@ -1,13 +1,11 @@
-#include <string>
-#include <sstream>
-#include <algorithm>
-#include <memory>
 #include <opencv2/opencv.hpp>
 #include "TrtNet.h"
 #include "argsParser.h"
 #include "configs.h"
 #include <chrono>
 #include "YoloLayer.h"
+#include "dataReader.h"
+#include "eval.h"
 
 using namespace std;
 using namespace argsParser;
@@ -35,13 +33,13 @@ vector<float> prepareImage(cv::Mat& img)
     resized.copyTo(cropped(rect));
 
     cv::Mat img_float;
-    if (INPUT_CHANNEL == 3)
+    if (c == 3)
         cropped.convertTo(img_float, CV_32FC3, 1/255.0);
     else
         cropped.convertTo(img_float, CV_32FC1 ,1/255.0);
 
     //HWC TO CHW
-    cv::Mat input_channels[INPUT_CHANNEL];
+    vector<Mat> input_channels(c);
     cv::split(img_float, input_channels);
 
     vector<float> result(h*w*c);
@@ -55,25 +53,9 @@ vector<float> prepareImage(cv::Mat& img)
     return result;
 }
 
-void printBox(vector<Detection>& dets,int width,int height,int classes,cv::Mat* img /*= nullptr*/)
-{
-    for(const auto& item : dets)
-    {
-        auto& b = item.bbox;
-        int left  = max((b[0]-b[2]/2.)*width,0.0);
-        int right = min((b[0]+b[2]/2.)*width,double(width));
-        int top   = max((b[1]-b[3]/2.)*height,0.0);
-        int bot   = min((b[1]+b[3]/2.)*height,double(height));
-        if (img) //draw rect
-            cv::rectangle(*img,cv::Point(left,top),cv::Point(right,bot),cv::Scalar(0,0,255),3,8,0);
-        cout << "class=" << item.classId << " prob=" << item.prob*100 << endl;
-        cout << "left=" << left << " right=" << right << " top=" << top << " bot=" << bot << endl;
-    }
-}
-
 void DoNms(vector<Detection>& detections,int classes ,float nmsThresh)
 {
-   auto t_start = chrono::high_resolution_clock::now();
+    auto t_start = chrono::high_resolution_clock::now();
 
     vector<vector<Detection>> resClass;
     resClass.resize(classes);
@@ -132,7 +114,7 @@ void DoNms(vector<Detection>& detections,int classes ,float nmsThresh)
 }
 
 
-void postProcessImg(cv::Mat& img,vector<Detection>& detections,int classes)
+vector<Bbox> postProcessImg(cv::Mat& img,vector<Detection>& detections,int classes)
 {
     using namespace cv;
 
@@ -159,8 +141,24 @@ void postProcessImg(cv::Mat& img,vector<Detection>& detections,int classes)
     float nmsThresh = parser::getFloatValue("nms");
     if(nmsThresh > 0) 
         DoNms(detections,classes,nmsThresh);
-    
-    printBox(detections,width,height,classes,&img);
+
+    vector<Bbox> boxes;
+    for(const auto& item : detections)
+    {
+        auto& b = item.bbox;
+        Bbox bbox = 
+        { 
+            item.classId,   //classId
+            max(int((b[0]-b[2]/2.)*width),0), //left
+            min(int((b[0]+b[2]/2.)*width),width), //right
+            max(int((b[1]-b[3]/2.)*height),0), //top
+            min(int((b[1]+b[3]/2.)*height),height), //bot
+            item.prob       //score
+        };
+        boxes.push_back(bbox);
+    }
+
+    return boxes;
 }
 
 vector<string> split(const string& str, char delim)
@@ -179,7 +177,6 @@ int main( int argc, char* argv[] )
 {
     parser::ADD_ARG_STRING("prototxt",Desc("input yolov3 deploy"),DefaultValue(INPUT_PROTOTXT),ValueDesc("file"));
     parser::ADD_ARG_STRING("caffemodel",Desc("input yolov3 caffemodel"),DefaultValue(INPUT_CAFFEMODEL),ValueDesc("file"));
-    parser::ADD_ARG_STRING("input",Desc("input image file"),DefaultValue(INPUT_IMAGE),ValueDesc("file"));
     parser::ADD_ARG_INT("C",Desc("channel"),DefaultValue(to_string(INPUT_CHANNEL)));
     parser::ADD_ARG_INT("H",Desc("height"),DefaultValue(to_string(INPUT_HEIGHT)));
     parser::ADD_ARG_INT("W",Desc("width"),DefaultValue(to_string(INPUT_WIDTH)));
@@ -188,6 +185,10 @@ int main( int argc, char* argv[] )
     parser::ADD_ARG_STRING("outputs",Desc("output nodes name"),DefaultValue(OUTPUTS));
     parser::ADD_ARG_INT("class",Desc("num of classes"),DefaultValue(to_string(DETECT_CLASSES)));
     parser::ADD_ARG_FLOAT("nms",Desc("non-maximum suppression value"),DefaultValue(to_string(NMS_THRESH)));
+
+    //input
+    parser::ADD_ARG_STRING("input",Desc("input image file"),DefaultValue(INPUT_IMAGE),ValueDesc("file"));
+    parser::ADD_ARG_STRING("evallist",Desc("eval gt list"),DefaultValue(EVAL_LIST),ValueDesc("file"));
 
     if(argc < 2){
         parser::printDesc();
@@ -241,45 +242,85 @@ int main( int argc, char* argv[] )
     
     //can load from file
     string saveName = "yolov3_" + mode + ".engine";
+
 //#define LOAD_FROM_ENGINE
 #ifdef LOAD_FROM_ENGINE    
     trtNet net(saveName);
 #else
     trtNet net(deployFile,caffemodelFile,outputNames,calibData,run_mode);
-    cout << "save Engine..." <<endl;
+    cout << "save Engine..." << saveName <<endl;
     net.saveEngine(saveName);
-    cout << "save Engine ok (you can manual load next time)" <<endl;
 #endif
-
-    string inputFileName = parser::getStringValue("input");
-    cv::Mat img = cv::imread(inputFileName);
-    vector<float> inputData = prepareImage(img);
 
     int outputCount = net.getOutputSize()/sizeof(float);
     unique_ptr<float[]> outputData(new float[outputCount]);
-    
-    //for (int i = 0;i < 1000 ;++i)
-    net.doInference(inputData.data(), outputData.get());
-    
-    net.printTime();
 
-    //Get Output    
-    auto output = outputData.get();
-    int count = output[0];
-    std::cout << "detCount: "<< count << std::endl;
+    string listFile = parser::getStringValue("evallist");
+    list<string> fileNames;
+    list<vector<Bbox>> groundTruth;
+
+    if(listFile.length() > 0)
+    {
+        std::cout << "loading from eval list " << listFile << std::endl; 
+        tie(fileNames,groundTruth) = readObjectLabelFileList(listFile);
+    }
+    else
+    {
+        string inputFileName = parser::getStringValue("input");
+        fileNames.push_back(inputFileName);
+    }
+
+    list<vector<Bbox>> outputs;
+    int classNum = parser::getIntValue("class");
+    for (const auto& filename :fileNames)
+    {
+        std::cout << "process: " << filename << std::endl;
+
+        cv::Mat img = cv::imread(filename);
+        vector<float> inputData = prepareImage(img);
+        if (!inputData.data())
+            continue;
+
+        net.doInference(inputData.data(), outputData.get());
+
+        //Get Output    
+        auto output = outputData.get();
+
+        //first detect count
+        int count = output[0];
+        //later detect result
+        vector<Detection> result;
+        result.resize(count);
+        memcpy(result.data(), &output[1], count*sizeof(Detection));
+
+        auto boxes = postProcessImg(img,result,classNum);
+        outputs.emplace_back(boxes);
+    }
     
-    vector<Detection> result;
-    result.resize(count);
-    //first detect count
-    output ++ ;
-    //later detect result
-    memcpy(result.data(), output , count*sizeof(Detection));
+    net.printTime();        
 
-    int classes = parser::getIntValue("class");
-    postProcessImg(img,result,classes);
+    if(groundTruth.size() > 0)
+    {
+        //eval map
+        evalMAPResult(outputs,groundTruth,classNum,0.5f);
+        evalMAPResult(outputs,groundTruth,classNum,0.75f);
+    }
 
-    cv::imwrite("result.jpg",img);
-    cv::imshow("result",img);
-    cv::waitKey(0);
+    if(fileNames.size() == 1)
+    {
+        //draw on image
+        cv::Mat img = cv::imread(*fileNames.begin());
+        auto bbox = *outputs.begin();
+        for(const auto& item : bbox)
+        {
+            cv::rectangle(img,cv::Point(item.left,item.top),cv::Point(item.right,item.bot),cv::Scalar(0,0,255),3,8,0);
+            cout << "class=" << item.classId << " prob=" << item.score*100 << endl;
+            cout << "left=" << item.left << " right=" << item.right << " top=" << item.top << " bot=" << item.bot << endl;
+        }
+        cv::imwrite("result.jpg",img);
+        cv::imshow("result",img);
+        cv::waitKey(0);
+    }
+
     return 0;
 }
