@@ -32,16 +32,24 @@ vector<float> prepareImage(cv::Mat& img)
     Rect rect((w- scaleSize.width)/2, (h-scaleSize.height)/2, scaleSize.width,scaleSize.height); 
     resized.copyTo(cropped(rect));
 
-    cv::Mat img_float;
+	cv::Mat img_float_t;
+	cv::Mat img_float;
     if (c == 3)
-        cropped.convertTo(img_float, CV_32FC3, 1/255.0);
+        cropped.convertTo(img_float, CV_32FC3, 2/255.0);
     else
-        cropped.convertTo(img_float, CV_32FC1 ,1/255.0);
-
+        cropped.convertTo(img_float, CV_32FC1 ,2/255.0);
+	vector<float> mean_values = {1.0,1.0,1.0};
+	std::vector<cv::Mat> channels;
+	for(int i=0; i<INPUT_CHANNEL; ++i){
+	cv::Mat channel(h, w, CV_32FC1, cv::Scalar(mean_values[i]));
+	channels.push_back(channel);
+	}
+	cv::Mat mean_;
+	cv::merge(channels, mean_);
+	cv::subtract(img_float, mean_, img_float_t);
     //HWC TO CHW
     vector<Mat> input_channels(c);
-    cv::split(img_float, input_channels);
-
+    cv::split(img_float_t, input_channels);
     vector<float> result(h*w*c);
     auto data = result.data();
     int channelLength = h * w;
