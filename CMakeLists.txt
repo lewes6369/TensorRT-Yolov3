@@ -19,7 +19,7 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 link_directories(${OpenCV_LIBRARIES_DIRS})
 
 #build runYolov3
-add_executable(runYolov3 main.cpp YoloLayer.cpp box.cpp)
+add_executable(runYolov3 main.cpp eval.cpp dataReader.cpp)
 target_link_libraries(runYolov3 TrtNet ${OpenCV_LIBS})
 
 install(TARGETS runYolov3 DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/install/)

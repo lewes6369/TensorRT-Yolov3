@@ -77,7 +77,7 @@ namespace argsParser
             string* str_argvs = new string[argc];
             for(int i = 0;i<argc;++i){
                 str_argvs[i] = argv[i];
-                std::cout << argv[i] << " " << std::endl;
+                //std::cout << argv[i] << " " << std::endl;
             }
 
             std::regex args_regex(R"(--(.+)=(.+))");
@@ -101,8 +101,8 @@ namespace argsParser
 
             std::cout << "####### input args####### " << std::endl;
             for (const auto& data :mArgs )
-                std::cout << data.first << "=" << data.second.value << ";" ;
-            std::cout << std::endl; 
+                std::cout << data.first << "=" << data.second.value << ";\n" ;
+            std::cout << "####### end args####### " << std::endl;
 
         }
 
