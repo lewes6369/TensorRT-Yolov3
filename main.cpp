@@ -22,12 +22,16 @@ vector<float> prepareImage(cv::Mat& img)
 
     float scale = min(float(w)/img.cols,float(h)/img.rows);
     auto scaleSize = cv::Size(img.cols * scale,img.rows * scale);
-
+	//cv::imwrite("resized.jpg",img);
     cv::Mat rgb ;
-    cv::cvtColor(img, rgb, CV_BGR2RGB);
+    //cv::cvtColor(img, rgb, CV_BGR2RGB);
     cv::Mat resized;
-    cv::resize(rgb, resized,scaleSize,0,0,INTER_CUBIC);
-
+    cv::resize(img, resized,scaleSize,0,0,INTER_LINEAR);
+	
+	// Use resize mode "WARP"
+	//cv::Mat cropped(h, w,CV_8UC3, 127);
+	//resized.copyTo(cropped);
+	
     cv::Mat cropped(h, w,CV_8UC3, 127);
     Rect rect((w- scaleSize.width)/2, (h-scaleSize.height)/2, scaleSize.width,scaleSize.height); 
     resized.copyTo(cropped(rect));
@@ -307,24 +311,27 @@ int main( int argc, char* argv[] )
     
     net.printTime();        
 
-    if(groundTruth.size() > 0)
+    /*if(groundTruth.size() > 0)
     {
         //eval map
         evalMAPResult(outputs,groundTruth,classNum,0.5f);
         evalMAPResult(outputs,groundTruth,classNum,0.75f);
-    }
+    }*/
 
     if(fileNames.size() == 1)
     {
         //draw on image
         cv::Mat img = cv::imread(*fileNames.begin());
-        auto bbox = *outputs.begin();
-        for(const auto& item : bbox)
-        {
-            cv::rectangle(img,cv::Point(item.left,item.top),cv::Point(item.right,item.bot),cv::Scalar(0,0,255),3,8,0);
-            cout << "class=" << item.classId << " prob=" << item.score*100 << endl;
-            cout << "left=" << item.left << " right=" << item.right << " top=" << item.top << " bot=" << item.bot << endl;
-        }
+        
+		if(outputs.size()) {
+			auto bbox = *outputs.begin();
+			for(const auto& item : bbox)
+			{
+				cv::rectangle(img,cv::Point(item.left,item.top),cv::Point(item.right,item.bot),cv::Scalar(0,0,255),3,8,0);
+				cout << "class=" << item.classId << " prob=" << item.score*100 << endl;
+				cout << "left=" << item.left << " right=" << item.right << " top=" << item.top << " bot=" << item.bot << endl;
+			}
+		}
         cv::imwrite("result.jpg",img);
         cv::imshow("result",img);
         cv::waitKey(0);
