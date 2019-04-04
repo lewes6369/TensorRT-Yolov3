@@ -1,5 +1,7 @@
 # TRTForYolov3
 
+<a href="https://996.icu"><img src="https://img.shields.io/badge/link-996.icu-red.svg" alt="996.icu" /></a>
+
 ## Desc
 
     tensorRT for Yolov3
@@ -33,64 +35,35 @@ layer {
 
 It also needs to change the yolo configs in "YoloConfigs.h" if different kernels.
 
-### Run Sample
-
-```bash
 #build source code
 git submodule update --init --recursive
 mkdir build
 cd build && cmake .. && make && make install
 cd ..
 
+
+#what I do
+1.Added multithreading
+
+2.Added tag name
+
+3.Added video inference
+
+
 #for yolov3-608
-./install/runYolov3 --caffemodel=./yolov3_608.caffemodel --prototxt=./yolov3_608.prototxt --input=./test.jpg --W=608 --H=608 --class=80
+##video
+./install/runYolov3 --caffemodel=./yolov3_608.caffemodel --prototxt=./yolov3_608.prototxt --display=1 --inputstream=video --videofile=sample_720p.mp4 --classname=coco.names
 
-#for fp16
-./install/runYolov3 --caffemodel=./yolov3_608.caffemodel --prototxt=./yolov3_608.prototxt --input=./test.jpg --W=608 --H=608 --class=80 --mode=fp16
-
-#for int8 with calibration datasets
-./install/runYolov3 --caffemodel=./yolov3_608.caffemodel --prototxt=./yolov3_608.prototxt --input=./test.jpg --W=608 --H=608 --class=80 --mode=int8 --calib=./calib_sample.txt
-
-#for yolov3-416 (need to modify include/YoloConfigs for YoloKernel)
-./install/runYolov3 --caffemodel=./yolov3_416.caffemodel --prototxt=./yolov3_416.prototxt --input=./test.jpg --W=416 --H=416 --class=80
-```
+##cam
+./install/runYolov3 --caffemodel=./yolov3_608.caffemodel --prototxt=./yolov3_608.prototxt --display=1 --inputstream=cam --cam=0 --classname=coco.names
 
 
 ### Performance
 
-Model | GPU | Mode | Inference Time
--- | -- | -- | -- 
-Yolov3-416 |  GTX 1060 | Caffe | 54.593ms
-Yolov3-416 |  GTX 1060 | float32 | 23.817ms
-Yolov3-416 |  GTX 1060 | int8 | 11.921ms
-Yolov3-608 |  GTX 1060 | Caffe | 88.489ms
-Yolov3-608 | GTX 1060 | float32 | 43.965ms
-Yolov3-608 |  GTX 1060 | int8 | 21.638ms
-Yolov3-608 | GTX 1080 Ti | float32 | 19.353ms
-Yolov3-608 | GTX 1080 Ti | int8 | 9.727ms
-Yolov3-416 |  GTX 1080 Ti | float32 | 9.677ms
-Yolov3-416 |  GTX 1080 Ti | int8 | 6.129ms  | li
-
-### Eval Result
-
-run above models with appending ```--evallist=labels.txt```
-
-int8 calibration data made from 200 pics selected in val2014 (see scripts dir)
-
-Model | GPU | Mode | dataset | MAP(0.50) | MAP(0.75)
--- | -- | -- | -- | -- | --
-Yolov3-416 | GTX 1060 | Caffe | COCO val2014 | 81.76 | 52.05
-Yolov3-416 | GTX 1060 | float32 | COCO val2014 | 81.93 | 52.19
-Yolov3-416 | GTX 1060 | int8 | COCO val2014 | 86.41 | 57.11
-Yolov3-416 | GTX 1060 | Caffe | COCO val2014 | 80.41 | 52.33
-Yolov3-608 | GTX 1060 | float32 | COCO val2014 |  80.6 | 52.43
-Yolov3-608 | GTX 1060 | int8 | COCO val2014 |  85.35 | 56.88 | li
+Model | GPU | Mode | Inference Time | FPS
+-- | -- | -- | -- | -- |
+Yolov3-608 | GTX 1060 | float32 | 58.965ms | 15
+Yolov3-608 | P40 | float32 | 20.353ms | 40
 
 
-Notice: 
-+ caffe implementation is little different in yolo layer and nms, and it should be the similar result compared to tensorRT fp32. 
-+ Int8 mode gets better result in the val dataset, but not certainly in other test data. And exactly it is more often a little worse.
 
-### Details About Wrapper
-
-see link [TensorRTWrapper](https://github.com/lewes6369/tensorRTWrapper)

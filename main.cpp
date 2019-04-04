@@ -250,8 +250,11 @@ int main(int argc, char* argv[])
 	parser::ADD_ARG_FLOAT("classname", Desc("class name"), DefaultValue(CLASS_NAME), ValueDesc("file"));
 	parser::ADD_ARG_INT("display", Desc("whether display video"), DefaultValue(to_string(DISPLAY)));
 	//input
-	parser::ADD_ARG_STRING("input", Desc("input image file"), DefaultValue(INPUT_IMAGE), ValueDesc("file"));
-	parser::ADD_ARG_STRING("evallist", Desc("eval gt list"), DefaultValue(EVAL_LIST), ValueDesc("file"));
+	parser::ADD_ARG_STRING("inputstream", Desc("input stream"), DefaultValue(INPUT_STREAM));
+	parser::ADD_ARG_INT("cam", Desc("cam"), DefaultValue(to_string(CAM)));
+	parser::ADD_ARG_STRING("videofile", Desc("videofile"), DefaultValue(VIDEOFILE), ValueDesc("file"));
+	//parser::ADD_ARG_STRING("input", Desc("input image file"), DefaultValue(INPUT_IMAGE), ValueDesc("file"));
+	//parser::ADD_ARG_STRING("evallist", Desc("eval gt list"), DefaultValue(EVAL_LIST), ValueDesc("file"));
 
 	if (argc < 2) {
 		parser::printDesc();
@@ -369,9 +372,19 @@ int main(int argc, char* argv[])
 	pthread_t fetch_thread;
 	pthread_t detect_thread;
 
+	string inputstream = parser::getStringValue("inputstream");
 
-	int cam_index = 0;
-	cap.open(cam_index);
+	if (!inputstream.compare("video"))
+	{
+		string video_file = parser::getStringValue("videofile");
+		cap.open(video_file);
+	}
+	else if(!inputstream.compare("cam"))
+	{
+		int cam_index = parser::getIntValue("cam");
+		cap.open(cam_index);
+	}
+
 	if (!cap.isOpened()) {
 		std::cout << "Error: video-stream can't be opened! \n";
 		return 1;
