@@ -67,7 +67,7 @@ cd ..
 
 Model | GPU | Mode | Inference Time | FPS
 -- | -- | -- | -- | -- |
-Yolov3-608 | GTX 1060 | float32 | 58.965ms | 15
+Yolov3-608 | GTX 1060(laptop) | float32 | 58.965ms | 15
 Yolov3-608 | P40 | float32 | 20.353ms | 40
 
 
