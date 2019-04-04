@@ -36,6 +36,7 @@ layer {
 It also needs to change the yolo configs in "YoloConfigs.h" if different kernels.
 
 #build source code
+
 git submodule update --init --recursive
 mkdir build
 cd build && cmake .. && make && make install
@@ -43,6 +44,7 @@ cd ..
 
 
 #what I do
+
 1.Added multithreading
 
 2.Added tag name
@@ -51,10 +53,13 @@ cd ..
 
 
 #for yolov3-608
+
 ##video
+
 ./install/runYolov3 --caffemodel=./yolov3_608.caffemodel --prototxt=./yolov3_608.prototxt --display=1 --inputstream=video --videofile=sample_720p.mp4 --classname=coco.names
 
 ##cam
+
 ./install/runYolov3 --caffemodel=./yolov3_608.caffemodel --prototxt=./yolov3_608.prototxt --display=1 --inputstream=cam --cam=0 --classname=coco.names
 
 
