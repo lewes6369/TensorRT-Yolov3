@@ -16,12 +16,15 @@ using namespace Yolo;
 
 static cv::VideoCapture cap;  //静态全局变量仅对当前文件可见，其他文件不可访问
 cv::Mat frame;
+cv::Mat frame_;
 vector<float> inputData;
+vector<float> inputData_;
 int outputCount;
 
 vector<string> ClassName;
 int classNum;
 trtNet net;
+int flag_exit=0;
 
 vector<float> prepareImage(cv::Mat& img)
 {
@@ -197,6 +200,11 @@ void *fetch_in_thread(void *ptr)
 {
 	//in = get_image_from_stream(cap);
 	cap >> frame;
+	if (!frame.data)
+	{
+		flag_exit = 1;
+		return 0;
+	}
 	//cv::Mat img = cv::imread(filename);
 	inputData = prepareImage(frame);
 	//in_s = resize_image(in, net.w, net.h);
@@ -206,8 +214,10 @@ void *fetch_in_thread(void *ptr)
 
 void *detect_in_thread(void *ptr)
 {
+
+	//cout << frame.flags << endl;
 	unique_ptr<float[]> outputData(new float[outputCount]);
-	net.doInference(inputData.data(), outputData.get());
+	net.doInference(inputData_.data(), outputData.get());
 
 	//Get Output    
 	auto output = outputData.get();
@@ -219,21 +229,93 @@ void *detect_in_thread(void *ptr)
 	result.resize(count);
 	memcpy(result.data(), &output[1], count * sizeof(Detection));
 
-	auto boxes = postProcessImg(frame, result, classNum);
+	auto boxes = postProcessImg(frame_, result, classNum);
 	//outputs.emplace_back(boxes);
 
 	//auto bbox = *outputs.begin();
 	for (const auto& item : boxes)
-	{
-		cv::rectangle(frame, cv::Point(item.left, item.top), cv::Point(item.right, item.bot), cv::Scalar(0, 0, 255), 3, 8, 0);
-		cv::rectangle(frame, cv::Point(item.left, item.top - 20), cv::Point(item.right, item.top), cv::Scalar(0, 0, 255), CV_FILLED, 8, 0);
-		cv::putText(frame, ClassName[item.classId], cv::Point(item.left, item.top), cv::FONT_HERSHEY_PLAIN, 2, cv::Scalar(255, 255, 255), 2);
+	{	
+		cv::rectangle(frame_, cv::Point(item.left, item.top), cv::Point(item.right, item.bot), cv::Scalar(0, 0, 255), 3, 8, 0);
+		cv::rectangle(frame_, cv::Point(item.left, item.top - 20), cv::Point(item.right, item.top), cv::Scalar(0, 0, 255), CV_FILLED, 8, 0);
+		cv::putText(frame_, ClassName[item.classId], cv::Point(item.left, item.top), cv::FONT_HERSHEY_PLAIN, 2, cv::Scalar(255, 255, 255), 2);
 		cout << "class=" << ClassName[item.classId] << " prob=" << item.score * 100 << endl;
 		//cout << "left=" << item.left << " right=" << item.right << " top=" << item.top << " bot=" << item.bot << endl;
 	}
 
 	return 0;
 }
+
+
+void do_video_or_cam()
+{
+	if (!cap.isOpened()) {
+		std::cout << "Error: video-stream can't be opened! \n";
+		exit(EXIT_FAILURE);
+	}
+	pthread_t fetch_thread;
+	pthread_t detect_thread;
+
+	fetch_in_thread(0);
+	inputData_ = inputData;
+	frame_ = frame;
+	detect_in_thread(0);
+	fetch_in_thread(0);
+	inputData_ = inputData;
+	frame_ = frame;
+
+
+	if (parser::getIntValue("display"))
+	{
+		cv::namedWindow("result", CV_WINDOW_NORMAL);
+		cv::resizeWindow("result", 640, 480);
+	}
+
+
+	float fps = 0;
+
+	//for (const auto& filename :fileNames)
+
+	while (1)
+	{
+		auto t_start = std::chrono::high_resolution_clock::now();
+		if (pthread_create(&fetch_thread, 0, fetch_in_thread, 0)) error("Thread creation failed");
+		if (pthread_create(&detect_thread, 0, detect_in_thread, 0)) error("Thread creation failed");//创造一个线程运行网络
+
+
+		pthread_join(fetch_thread, 0);//塞入线程
+		pthread_join(detect_thread, 0);
+
+
+
+		if (parser::getIntValue("display"))
+		{
+			cv::imshow("result", frame_);
+			if (cv::waitKey(10) == 27)
+			{
+				break;
+			}
+		}
+		inputData_ = inputData;
+		frame_ = frame;
+		if (flag_exit == 1)
+		{
+			break;
+		}
+		
+
+		auto t_end = std::chrono::high_resolution_clock::now();
+		float total = std::chrono::duration<float, std::milli>(t_end - t_start).count();
+		float cout = 1000. / total;
+		fps = 0.9*fps + 0.1*cout;
+		std::cout << "fps is " << fps << std::endl;
+		
+	}
+	std::cout << "video stream close\n " << std::endl;
+	cv::destroyAllWindows();
+	cap.release();
+}
+
+
 
 int main(int argc, char* argv[])
 {
@@ -254,11 +336,11 @@ int main(int argc, char* argv[])
 	parser::ADD_ARG_INT("cam", Desc("cam"), DefaultValue(to_string(CAM)));
 	parser::ADD_ARG_STRING("videofile", Desc("videofile"), DefaultValue(VIDEOFILE), ValueDesc("file"));
 	//parser::ADD_ARG_STRING("input", Desc("input image file"), DefaultValue(INPUT_IMAGE), ValueDesc("file"));
-	//parser::ADD_ARG_STRING("evallist", Desc("eval gt list"), DefaultValue(EVAL_LIST), ValueDesc("file"));
+	parser::ADD_ARG_STRING("evallist", Desc("eval gt list"), DefaultValue(EVAL_LIST), ValueDesc("file"));
 
 	if (argc < 2) {
 		parser::printDesc();
-		exit(-1);
+		return 1;
 	}
 
 	parser::parseArgs(argc, argv);
@@ -277,7 +359,7 @@ int main(int argc, char* argv[])
 		if (!file.is_open())
 		{
 			cout << "read file list error,please check file :" << calibFileList << endl;
-			exit(-1);
+			return 1;
 		}
 
 		string strLine;
@@ -324,17 +406,8 @@ int main(int argc, char* argv[])
 		net.trtNet_engine(saveName);
 	}
 
-	//#ifdef LOAD_FROM_ENGINE    
-	//    trtNet net(saveName);
-	//#else
-	//    trtNet net(deployFile,caffemodelFile,outputNames,calibData,run_mode);
-	//    cout << "save Engine..." << saveName <<endl;
-	//    net.saveEngine(saveName);
-	//#endif
-
 	outputCount = net.getOutputSize() / sizeof(float);
 	//outputData(new float[outputCount]);
-
 	//string listFile = parser::getStringValue("evallist");
 	//list<string> fileNames;
 	//list<vector<Bbox>> groundTruth;
@@ -357,7 +430,7 @@ int main(int argc, char* argv[])
 	if (!ClassNamelist.is_open())
 	{
 		std::cout << "read file list error,please check file :" << classFile << std::endl;
-		exit(-1);
+		return 1;
 	}
 	string strLine;
 	while (getline(ClassNamelist, strLine))
@@ -367,93 +440,19 @@ int main(int argc, char* argv[])
 
 	ClassNamelist.close();
 
-
-	//ClassName
-	pthread_t fetch_thread;
-	pthread_t detect_thread;
-
 	string inputstream = parser::getStringValue("inputstream");
 
 	if (!inputstream.compare("video"))
 	{
 		string video_file = parser::getStringValue("videofile");
 		cap.open(video_file);
+		do_video_or_cam();
 	}
 	else if(!inputstream.compare("cam"))
 	{
 		int cam_index = parser::getIntValue("cam");
 		cap.open(cam_index);
+		do_video_or_cam();
 	}
-
-	if (!cap.isOpened()) {
-		std::cout << "Error: video-stream can't be opened! \n";
-		return 1;
-	}
-
-	fetch_in_thread(0);
-	detect_in_thread(0);
-
-	if (parser::getIntValue("display"))
-	{
-		cv::namedWindow("result", CV_WINDOW_NORMAL);
-		cv::resizeWindow("result", 512, 512);
-	}
-
-
-	float fps = 0;
-
-	//for (const auto& filename :fileNames)
-
-	while (1)
-	{
-		auto t_start = std::chrono::high_resolution_clock::now();
-		if (pthread_create(&fetch_thread, 0, fetch_in_thread, 0)) error("Thread creation failed");
-		if (pthread_create(&detect_thread, 0, detect_in_thread, 0)) error("Thread creation failed");//创造一个线程运行网络
-
-		if (!inputData.data())
-			continue;
-
-		if (parser::getIntValue("display"))
-		{
-			cv::imshow("result", frame);
-			if (cv::waitKey(10) == 27)break;
-		}
-
-		pthread_join(fetch_thread, 0);//塞入线程
-		pthread_join(detect_thread, 0);
-
-		auto t_end = std::chrono::high_resolution_clock::now();
-		float total = std::chrono::duration<float, std::milli>(t_end - t_start).count();
-		float cout = 1000. / total;
-		fps = 0.9*fps + 0.1*cout;
-		std::cout << "fps is " << fps << std::endl;
-	}
-	cv::destroyAllWindows();
-	cap.release();
-	//net.printTime();        
-
-	//if(groundTruth.size() > 0)
-	//{
-	//    //eval map
-	//    evalMAPResult(outputs,groundTruth,classNum,0.5f);
-	//    evalMAPResult(outputs,groundTruth,classNum,0.75f);
-	//}
-
-	//if(fileNames.size() == 1)
-	//{
-	//    //draw on image
-	//    cv::Mat img = cv::imread(*fileNames.begin());
-	//    auto bbox = *outputs.begin();
-	//    for(const auto& item : bbox)
-	//    {
-	//        cv::rectangle(img,cv::Point(item.left,item.top),cv::Point(item.right,item.bot),cv::Scalar(0,0,255),3,8,0);
-	//        cout << "class=" << item.classId << " prob=" << item.score*100 << endl;
-	//        cout << "left=" << item.left << " right=" << item.right << " top=" << item.top << " bot=" << item.bot << endl;
-	//    }
-	//    cv::imwrite("result.jpg",img);
-	//    cv::imshow("result",img);
-	//    cv::waitKey(0);
-	//}
-
 	return 0;
 }
