@@ -9,8 +9,8 @@
 ### Test Enviroments
 
     Ubuntu  16.04
-    TensorRT 5.0.2.6/4.0.1.6
-    CUDA 9.2
+    TensorRT 5.1/5.0.2.6/4.0.1.6
+    CUDA 9.2 or CUDA 9.0
 
 ### Models
 
