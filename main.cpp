@@ -258,10 +258,10 @@ void do_video_or_cam()
 	fetch_in_thread(0);
 	inputData_ = inputData;
 	frame_ = frame;
-	detect_in_thread(0);
-	fetch_in_thread(0);
-	inputData_ = inputData;
-	frame_ = frame;
+	//detect_in_thread(0);
+	//fetch_in_thread(0);
+	//inputData_ = inputData;
+	//frame_ = frame;
 
 
 	if (parser::getIntValue("display"))
