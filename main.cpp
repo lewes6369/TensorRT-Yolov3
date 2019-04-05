@@ -19,12 +19,16 @@ cv::Mat frame;
 cv::Mat frame_;
 vector<float> inputData;
 vector<float> inputData_;
+list<string> fileNames;
+list<vector<Bbox>> groundTruth;
+list<vector<Bbox>> outputs;
 int outputCount;
+
 
 vector<string> ClassName;
 int classNum;
 trtNet net;
-int flag_exit=0;
+int flag_exit = 0;
 
 vector<float> prepareImage(cv::Mat& img)
 {
@@ -69,7 +73,7 @@ vector<float> prepareImage(cv::Mat& img)
 
 void DoNms(vector<Detection>& detections, int classes, float nmsThresh)
 {
-	auto t_start = chrono::high_resolution_clock::now();
+	//auto t_start = chrono::high_resolution_clock::now();
 
 	vector<vector<Detection>> resClass;
 	resClass.resize(classes);
@@ -122,16 +126,16 @@ void DoNms(vector<Detection>& detections, int classes, float nmsThresh)
 	//swap(detections,result);
 	detections = move(result);
 
-	auto t_end = chrono::high_resolution_clock::now();
-	float total = chrono::duration<float, milli>(t_end - t_start).count();
-	cout << "Time taken for nms is " << total << " ms." << endl;
+	//auto t_end = chrono::high_resolution_clock::now();
+	//float total = chrono::duration<float, milli>(t_end - t_start).count();
+	//cout << "Time taken for nms is " << total << " ms." << endl;
 }
 
 
 vector<Bbox> postProcessImg(cv::Mat& img, vector<Detection>& detections, int classes)
 {
 	using namespace cv;
-
+	//auto t_start = chrono::high_resolution_clock::now();
 	int h = parser::getIntValue("H");   //net h
 	int w = parser::getIntValue("W");   //net w
 
@@ -171,7 +175,9 @@ vector<Bbox> postProcessImg(cv::Mat& img, vector<Detection>& detections, int cla
 		};
 		boxes.push_back(bbox);
 	}
-
+	//auto t_end = chrono::high_resolution_clock::now();
+	//float total = chrono::duration<float, milli>(t_end - t_start).count();
+	//cout << "Time taken for nms is " << total << " ms." << endl;
 	return boxes;
 }
 
@@ -198,7 +204,7 @@ void error(const char *s)
 
 void *fetch_in_thread(void *ptr)
 {
-	//in = get_image_from_stream(cap);
+
 	cap >> frame;
 	if (!frame.data)
 	{
@@ -207,7 +213,6 @@ void *fetch_in_thread(void *ptr)
 	}
 	//cv::Mat img = cv::imread(filename);
 	inputData = prepareImage(frame);
-	//in_s = resize_image(in, net.w, net.h);
 
 	return 0;
 }
@@ -234,7 +239,7 @@ void *detect_in_thread(void *ptr)
 
 	//auto bbox = *outputs.begin();
 	for (const auto& item : boxes)
-	{	
+	{
 		cv::rectangle(frame_, cv::Point(item.left, item.top), cv::Point(item.right, item.bot), cv::Scalar(0, 0, 255), 3, 8, 0);
 		cv::rectangle(frame_, cv::Point(item.left, item.top - 20), cv::Point(item.right, item.top), cv::Scalar(0, 0, 255), CV_FILLED, 8, 0);
 		cv::putText(frame_, ClassName[item.classId], cv::Point(item.left, item.top), cv::FONT_HERSHEY_PLAIN, 2, cv::Scalar(255, 255, 255), 2);
@@ -290,7 +295,7 @@ void do_video_or_cam()
 		if (parser::getIntValue("display"))
 		{
 			cv::imshow("result", frame_);
-			if (cv::waitKey(10) == 27)
+			if (cv::waitKey(5) == 27)
 			{
 				break;
 			}
@@ -301,14 +306,14 @@ void do_video_or_cam()
 		{
 			break;
 		}
-		
+
 
 		auto t_end = std::chrono::high_resolution_clock::now();
 		float total = std::chrono::duration<float, std::milli>(t_end - t_start).count();
 		float cout = 1000. / total;
 		fps = 0.9*fps + 0.1*cout;
 		std::cout << "fps is " << fps << std::endl;
-		
+
 	}
 	std::cout << "video stream close\n " << std::endl;
 	cv::destroyAllWindows();
@@ -316,6 +321,128 @@ void do_video_or_cam()
 }
 
 
+
+void *fetch_image_in_thread(void *ptr)
+{
+	if (!frame.data)
+	{
+		return 0;
+	}
+	//cv::Mat img = cv::imread(filename);
+	inputData = prepareImage(frame);
+	//in_s = resize_image(in, net.w, net.h);
+
+	return 0;
+}
+
+
+void *detect_image_in_thread(void *ptr)
+{
+
+	//cout << frame.flags << endl;
+	unique_ptr<float[]> outputData(new float[outputCount]);
+	net.doInference(inputData_.data(), outputData.get());
+
+	//Get Output    
+	auto output = outputData.get();
+
+	//first detect count
+	int count = output[0];
+	//later detect result
+	vector<Detection> result;
+	result.resize(count);
+	memcpy(result.data(), &output[1], count * sizeof(Detection));
+
+	auto boxes = postProcessImg(frame_, result, classNum);
+	outputs.emplace_back(boxes);
+
+	//auto bbox = *outputs.begin();
+	for (const auto& item : boxes)
+	{
+		cv::rectangle(frame_, cv::Point(item.left, item.top), cv::Point(item.right, item.bot), cv::Scalar(0, 0, 255), 3, 8, 0);
+		cv::rectangle(frame_, cv::Point(item.left, item.top - 20), cv::Point(item.right, item.top), cv::Scalar(0, 0, 255), CV_FILLED, 8, 0);
+		cv::putText(frame_, ClassName[item.classId], cv::Point(item.left, item.top), cv::FONT_HERSHEY_PLAIN, 2, cv::Scalar(255, 255, 255), 2);
+		cout << "class=" << ClassName[item.classId] << " prob=" << item.score * 100 << endl;
+		//cout << "left=" << item.left << " right=" << item.right << " top=" << item.top << " bot=" << item.bot << endl;
+	}
+
+	return 0;
+}
+
+
+void do_image()
+{
+	pthread_t fetch_thread;
+	pthread_t detect_thread;
+	list<string>::iterator it;
+	it = fileNames.begin();
+	//cout << "deal image:" << *it << endl;
+	frame = cv::imread(*it);
+	vector<string> line = split(*it, '/');
+	string save_img_name = parser::getStringValue("savefile")+"/"+ *(line.end()-1);
+	it++;
+
+	fetch_image_in_thread(0);
+	inputData_ = inputData;
+	frame_ = frame;
+
+	if (parser::getIntValue("display"))
+	{
+		cv::namedWindow("result", CV_WINDOW_NORMAL);
+		cv::resizeWindow("result", 640, 480);
+	}
+	float fps = 0;
+
+	while(1)
+	{
+		auto t_start = chrono::high_resolution_clock::now();
+		if (it != fileNames.end())
+		{
+			frame = cv::imread(*it);
+		}
+
+		if (pthread_create(&fetch_thread, 0, fetch_image_in_thread, 0)) error("Thread creation failed");
+		if (pthread_create(&detect_thread, 0, detect_image_in_thread, 0)) error("Thread creation failed");//创造一个线程运行网络
+
+		pthread_join(fetch_thread, 0);//塞入线程
+		pthread_join(detect_thread, 0);
+
+		if (parser::getIntValue("display"))
+		{
+			cv::imshow("result", frame_);
+			if (cv::waitKey(5) == 27)
+			{
+				break;
+			}
+		}
+		if (parser::getIntValue("saveimg"))
+		{
+			cv::imwrite(save_img_name, frame_);
+		}
+
+		inputData_ = inputData;
+		frame_ = frame;
+		auto t_end = chrono::high_resolution_clock::now();
+		float total = chrono::duration<float, std::milli>(t_end - t_start).count();
+		float cout = 1000. / total;
+		fps = 0.9*fps + 0.1*cout;
+		std::cout << "fps is " << fps << std::endl;
+		if (it == fileNames.end()) break;
+		line = split(*it, '/');
+		save_img_name = parser::getStringValue("savefile") + "/" + *(line.end() - 1);
+		it++;
+		
+	}
+	cout << "all over\n " << endl;
+	cv::destroyAllWindows();
+	if (groundTruth.size() > 0)
+	{
+		//eval map
+		evalMAPResult(outputs, groundTruth, classNum, 0.5f);
+		evalMAPResult(outputs, groundTruth, classNum, 0.75f);
+	}
+	return ;
+}
 
 int main(int argc, char* argv[])
 {
@@ -331,11 +458,12 @@ int main(int argc, char* argv[])
 	parser::ADD_ARG_FLOAT("nms", Desc("non-maximum suppression value"), DefaultValue(to_string(NMS_THRESH)));
 	parser::ADD_ARG_FLOAT("classname", Desc("class name"), DefaultValue(CLASS_NAME), ValueDesc("file"));
 	parser::ADD_ARG_INT("display", Desc("whether display video"), DefaultValue(to_string(DISPLAY)));
-	//input
+	parser::ADD_ARG_INT("saveimg", Desc("whether save image"), DefaultValue(to_string(SAVEIMG)));
 	parser::ADD_ARG_STRING("inputstream", Desc("input stream"), DefaultValue(INPUT_STREAM));
 	parser::ADD_ARG_INT("cam", Desc("cam"), DefaultValue(to_string(CAM)));
 	parser::ADD_ARG_STRING("videofile", Desc("videofile"), DefaultValue(VIDEOFILE), ValueDesc("file"));
-	//parser::ADD_ARG_STRING("input", Desc("input image file"), DefaultValue(INPUT_IMAGE), ValueDesc("file"));
+	parser::ADD_ARG_STRING("savefile", Desc("savefile"), DefaultValue(SAVEFILE));
+	parser::ADD_ARG_STRING("input", Desc("input image file"), DefaultValue(INPUT_IMAGE), ValueDesc("file"));
 	parser::ADD_ARG_STRING("evallist", Desc("eval gt list"), DefaultValue(EVAL_LIST), ValueDesc("file"));
 
 	if (argc < 2) {
@@ -366,7 +494,7 @@ int main(int argc, char* argv[])
 		while (getline(file, strLine))
 		{
 			cv::Mat img = cv::imread(strLine);
-			auto data = prepareImage(img);
+			auto data = prepareImage(img);  //转换为608*608的数据
 			calibData.emplace_back(data);
 		}
 		file.close();
@@ -407,23 +535,7 @@ int main(int argc, char* argv[])
 	}
 
 	outputCount = net.getOutputSize() / sizeof(float);
-	//outputData(new float[outputCount]);
-	//string listFile = parser::getStringValue("evallist");
-	//list<string> fileNames;
-	//list<vector<Bbox>> groundTruth;
-	//if(listFile.length() > 0)
-	//{
-	//   std::cout << "loading from eval list " << listFile << std::endl; 
-	//   tie(fileNames,groundTruth) = readObjectLabelFileList(listFile);
-	//}
-	//else
-	//{
-	//	string inputFileName = parser::getStringValue("input");
-	//	fileNames.push_back(inputFileName);
-		//该函数将一个新的元素加到vector的最后面，位置为当前最后一个元素的下一个元素，新的元素的值是val的拷贝（或者是移动拷贝）
-	//}
 
-	//list<vector<Bbox>> outputs;
 	classNum = parser::getIntValue("class");
 	string classFile = parser::getStringValue("classname");
 	ifstream ClassNamelist(classFile);
@@ -448,11 +560,51 @@ int main(int argc, char* argv[])
 		cap.open(video_file);
 		do_video_or_cam();
 	}
-	else if(!inputstream.compare("cam"))
+	else if (!inputstream.compare("cam"))
 	{
 		int cam_index = parser::getIntValue("cam");
 		cap.open(cam_index);
 		do_video_or_cam();
 	}
+	else if (!inputstream.compare("image"))
+	{
+		string listFile = parser::getStringValue("evallist");
+		if (listFile.length() > 0)
+		{
+
+			std::cout << "loading from eval list " << listFile << std::endl;
+			tie(fileNames, groundTruth) = readObjectLabelFileList(listFile);
+		}
+		else
+		{
+			string inputFileName = parser::getStringValue("input");
+			if (inputFileName.find(".jpg")!= inputFileName.npos || inputFileName.find(".png") != inputFileName.npos)//如果是单张图片
+			{
+				fileNames.push_back(inputFileName);
+			}
+			else
+			{
+				ifstream readinputfile(inputFileName);
+				if (!readinputfile.is_open())
+				{
+					cout << "can't read input image list" << inputFileName << endl;
+					return 1;
+				}
+				string strLine;
+				while (getline(readinputfile, strLine))
+				{
+					fileNames.push_back(strLine);
+				}
+				readinputfile.close();
+			}
+			//fileNames.push_back(inputFileName);
+		}
+		//list<vector<Bbox>> outputs;
+		do_image();
+	}
+
+	//net.~trtNet();
 	return 0;
 }
+
+//net.~trtNet();

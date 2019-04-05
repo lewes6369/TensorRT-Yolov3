@@ -62,6 +62,10 @@ cd ..
 
 ./install/runYolov3 --caffemodel=./yolov3_608.caffemodel --prototxt=./yolov3_608.prototxt --display=1 --inputstream=cam --cam=0 --classname=coco.names
 
+## int8
+
+./install/runYolov3 --caffemodel=./yolov3_608.caffemodel --prototxt=./yolov3_608.prototxt --display=1 --inputstream=cam --cam=0 --classname=coco.names --mode=int8 --calib=cal.list
+
 ## example
 
 
@@ -73,6 +77,7 @@ Model | GPU | Mode | Inference Time | FPS
 -- | -- | -- | -- | -- |
 Yolov3-608 | GTX 1060(laptop) | float32 | 58.965ms | 15
 Yolov3-608 | P40 | float32 | 20.353ms | 40
+Yolov3-608 | P40 | int8 | 13.66ms | 50
 
 
 
