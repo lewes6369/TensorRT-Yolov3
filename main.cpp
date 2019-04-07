@@ -27,7 +27,6 @@ int outputCount;
 
 vector<string> ClassName;
 int classNum;
-trtNet net;
 int flag_exit = 0;
 
 vector<float> prepareImage(cv::Mat& img)
@@ -219,10 +218,11 @@ void *fetch_in_thread(void *ptr)
 
 void *detect_in_thread(void *ptr)
 {
-
+	trtNet *net;
+	net = (trtNet*)ptr;
 	//cout << frame.flags << endl;
 	unique_ptr<float[]> outputData(new float[outputCount]);
-	net.doInference(inputData_.data(), outputData.get());
+	net->doInference(inputData_.data(), outputData.get());
 
 	//Get Output    
 	auto output = outputData.get();
@@ -251,7 +251,7 @@ void *detect_in_thread(void *ptr)
 }
 
 
-void do_video_or_cam()
+void do_video_or_cam(trtNet &net)
 {
 	if (!cap.isOpened()) {
 		std::cout << "Error: video-stream can't be opened! \n";
@@ -284,7 +284,7 @@ void do_video_or_cam()
 	{
 		auto t_start = std::chrono::high_resolution_clock::now();
 		if (pthread_create(&fetch_thread, 0, fetch_in_thread, 0)) error("Thread creation failed");
-		if (pthread_create(&detect_thread, 0, detect_in_thread, 0)) error("Thread creation failed");//创造一个线程运行网络
+		if (pthread_create(&detect_thread, 0, detect_in_thread, &net)) error("Thread creation failed");//创造一个线程运行网络
 
 
 		pthread_join(fetch_thread, 0);//塞入线程
@@ -338,10 +338,11 @@ void *fetch_image_in_thread(void *ptr)
 
 void *detect_image_in_thread(void *ptr)
 {
-
+	trtNet *net;
+	net = (trtNet*)ptr;
 	//cout << frame.flags << endl;
 	unique_ptr<float[]> outputData(new float[outputCount]);
-	net.doInference(inputData_.data(), outputData.get());
+	net->doInference(inputData_.data(), outputData.get());
 
 	//Get Output    
 	auto output = outputData.get();
@@ -370,7 +371,7 @@ void *detect_image_in_thread(void *ptr)
 }
 
 
-void do_image()
+void do_image(trtNet &net)
 {
 	pthread_t fetch_thread;
 	pthread_t detect_thread;
@@ -402,7 +403,7 @@ void do_image()
 		}
 
 		if (pthread_create(&fetch_thread, 0, fetch_image_in_thread, 0)) error("Thread creation failed");
-		if (pthread_create(&detect_thread, 0, detect_image_in_thread, 0)) error("Thread creation failed");//创造一个线程运行网络
+		if (pthread_create(&detect_thread, 0, detect_image_in_thread, &net)) error("Thread creation failed");//创造一个线程运行网络
 
 		pthread_join(fetch_thread, 0);//塞入线程
 		pthread_join(detect_thread, 0);
@@ -521,6 +522,7 @@ int main(int argc, char* argv[])
 
 	//#define LOAD_FROM_ENGINE
 	std::ifstream serialize_iutput_stream(saveName, std::ios::in | std::ios::binary);
+	trtNet net;
 	net.set_mode(run_mode);
 
 	if (!serialize_iutput_stream)
@@ -558,13 +560,13 @@ int main(int argc, char* argv[])
 	{
 		string video_file = parser::getStringValue("videofile");
 		cap.open(video_file);
-		do_video_or_cam();
+		do_video_or_cam(net);
 	}
 	else if (!inputstream.compare("cam"))
 	{
 		int cam_index = parser::getIntValue("cam");
 		cap.open(cam_index);
-		do_video_or_cam();
+		do_video_or_cam(net);
 	}
 	else if (!inputstream.compare("image"))
 	{
@@ -600,7 +602,7 @@ int main(int argc, char* argv[])
 			//fileNames.push_back(inputFileName);
 		}
 		//list<vector<Bbox>> outputs;
-		do_image();
+		do_image(net);
 	}
 
 	//net.~trtNet();
