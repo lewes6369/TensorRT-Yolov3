@@ -1,14 +1,16 @@
 # TRTForYolov3
 
+<a href="https://996.icu"><img src="https://img.shields.io/badge/link-996.icu-red.svg" alt="996.icu" /></a>
+
 ## Desc
 
     tensorRT for Yolov3
 
 ### Test Enviroments
 
-    Ubuntu  16.04
-    TensorRT 5.0.2.6/4.0.1.6
-    CUDA 9.2
+    Ubuntu  16.04  or Jetson Nano
+    TensorRT 5.1/5.0.2.6/4.0.1.6
+    CUDA 9.2 or CUDA 9.0 or CUDA 10.0
 
 ### Models
 
@@ -33,64 +35,53 @@ layer {
 
 It also needs to change the yolo configs in "YoloConfigs.h" if different kernels.
 
-### Run Sample
+# build source code
 
-```bash
-#build source code
 git submodule update --init --recursive
 mkdir build
 cd build && cmake .. && make && make install
 cd ..
 
-#for yolov3-608
-./install/runYolov3 --caffemodel=./yolov3_608.caffemodel --prototxt=./yolov3_608.prototxt --input=./test.jpg --W=608 --H=608 --class=80
 
-#for fp16
-./install/runYolov3 --caffemodel=./yolov3_608.caffemodel --prototxt=./yolov3_608.prototxt --input=./test.jpg --W=608 --H=608 --class=80 --mode=fp16
+# what I do
 
-#for int8 with calibration datasets
-./install/runYolov3 --caffemodel=./yolov3_608.caffemodel --prototxt=./yolov3_608.prototxt --input=./test.jpg --W=608 --H=608 --class=80 --mode=int8 --calib=./calib_sample.txt
+1.Added multithreading
 
-#for yolov3-416 (need to modify include/YoloConfigs for YoloKernel)
-./install/runYolov3 --caffemodel=./yolov3_416.caffemodel --prototxt=./yolov3_416.prototxt --input=./test.jpg --W=416 --H=416 --class=80
-```
+2.Added tag name
 
+3.Added video inference
+
+
+# for yolov3-608
+
+## video
+
+./install/runYolov3 --caffemodel=./yolov3_608.caffemodel --prototxt=./yolov3_608.prototxt --display=1 --inputstream=video --videofile=sample_720p.mp4 --classname=coco.names
+
+## cam
+
+./install/runYolov3 --caffemodel=./yolov3_608.caffemodel --prototxt=./yolov3_608.prototxt --display=1 --inputstream=cam --cam=0 --classname=coco.names
+
+## int8
+
+./install/runYolov3 --caffemodel=./yolov3_608.caffemodel --prototxt=./yolov3_608.prototxt --display=1 --inputstream=cam --cam=0 --classname=coco.names --mode=int8 --calib=cal.list
+
+## example
+
+
+![图片alt](https://github.com/talebolano/TensorRT-Yolov3/tree/master/image/example.png)
 
 ### Performance
 
-Model | GPU | Mode | Inference Time
--- | -- | -- | -- 
-Yolov3-416 |  GTX 1060 | Caffe | 54.593ms
-Yolov3-416 |  GTX 1060 | float32 | 23.817ms
-Yolov3-416 |  GTX 1060 | int8 | 11.921ms
-Yolov3-608 |  GTX 1060 | Caffe | 88.489ms
-Yolov3-608 | GTX 1060 | float32 | 43.965ms
-Yolov3-608 |  GTX 1060 | int8 | 21.638ms
-Yolov3-608 | GTX 1080 Ti | float32 | 19.353ms
-Yolov3-608 | GTX 1080 Ti | int8 | 9.727ms
-Yolov3-416 |  GTX 1080 Ti | float32 | 9.677ms
-Yolov3-416 |  GTX 1080 Ti | int8 | 6.129ms  | li
-
-### Eval Result
-
-run above models with appending ```--evallist=labels.txt```
-
-int8 calibration data made from 200 pics selected in val2014 (see scripts dir)
-
-Model | GPU | Mode | dataset | MAP(0.50) | MAP(0.75)
--- | -- | -- | -- | -- | --
-Yolov3-416 | GTX 1060 | Caffe | COCO val2014 | 81.76 | 52.05
-Yolov3-416 | GTX 1060 | float32 | COCO val2014 | 81.93 | 52.19
-Yolov3-416 | GTX 1060 | int8 | COCO val2014 | 86.41 | 57.11
-Yolov3-416 | GTX 1060 | Caffe | COCO val2014 | 80.41 | 52.33
-Yolov3-608 | GTX 1060 | float32 | COCO val2014 |  80.6 | 52.43
-Yolov3-608 | GTX 1060 | int8 | COCO val2014 |  85.35 | 56.88 | li
+Model | GPU | Mode | Inference Time | FPS
+-- | -- | -- | -- | -- |
+Yolov3-608 | GTX 1060(laptop)(win10) | float32 | 58ms | 15
+Yolov3-608 | GTX 1060(laptop)(win10) | int8 | 33ms | 18
+Yolov3-608 | P40 | float32 | 20ms | 40
+Yolov3-608 | P40 | int8 | 13ms | 50
+Yolov3-416 | P40 | float32 | 12ms | 60
+Yolov3-416 | P40 | int8 | 8ms | 70
+Yolov3-416 | jeston nano | fp16 | 343ms | 2.8
 
 
-Notice: 
-+ caffe implementation is little different in yolo layer and nms, and it should be the similar result compared to tensorRT fp32. 
-+ Int8 mode gets better result in the val dataset, but not certainly in other test data. And exactly it is more often a little worse.
 
-### Details About Wrapper
-
-see link [TensorRTWrapper](https://github.com/lewes6369/tensorRTWrapper)

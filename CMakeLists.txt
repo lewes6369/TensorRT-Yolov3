@@ -6,7 +6,7 @@ set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Ofast -Wfatal-errors")
 
 #add wrapper
-set(TRT_WRAPPER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tensorRTWrapper/code)
+set(TRT_WRAPPER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tensorRTW/code)
 add_subdirectory(${TRT_WRAPPER_DIR})
 include_directories(${TRT_WRAPPER_DIR}/include)
 
@@ -20,6 +20,6 @@ link_directories(${OpenCV_LIBRARIES_DIRS})
 
 #build runYolov3
 add_executable(runYolov3 main.cpp eval.cpp dataReader.cpp)
-target_link_libraries(runYolov3 TrtNet ${OpenCV_LIBS})
+target_link_libraries(runYolov3 TrtNet ${OpenCV_LIBS} pthread)
 
 install(TARGETS runYolov3 DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/install/)
