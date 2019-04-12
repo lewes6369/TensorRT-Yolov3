@@ -8,7 +8,7 @@
 
 ### Test Enviroments
 
-    Ubuntu  16.04
+    Ubuntu  16.04  or Jetson Nano
     TensorRT 5.1/5.0.2.6/4.0.1.6
     CUDA 9.2 or CUDA 9.0 or CUDA 10.0
 
@@ -81,6 +81,7 @@ Yolov3-608 | P40 | float32 | 20ms | 40
 Yolov3-608 | P40 | int8 | 13ms | 50
 Yolov3-416 | P40 | float32 | 12ms | 60
 Yolov3-416 | P40 | int8 | 8ms | 70
+Yolov3-416 | jeston nano | fp16 | 343ms | 2.8
 
 
 
