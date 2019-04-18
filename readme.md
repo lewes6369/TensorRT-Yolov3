@@ -37,7 +37,7 @@ cd ..
 Model | GPU | Mode | Inference Time
 -- | -- | -- | -- 
 mobilenet-yolov3-608 |  GTX 1080 | float32 | 12.655ms
-
+mobilenet-yolov3-608 |  Jetson nano | float32 | 247.655ms
 
 ### Details About Wrapper
 
