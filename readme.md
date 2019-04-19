@@ -38,6 +38,10 @@ Model | GPU | Mode | Inference Time
 -- | -- | -- | -- 
 mobilenet-yolov3-608 |  GTX 1080 | float32 | 12.655ms
 mobilenet-yolov3-608 |  Jetson nano | float32 | 247.655ms
+mobilenet-yolov3-lite-320 |  Jetson nano | float32 | 114.055ms
+mobilenet-yolov3-lite-320 |  Jetson nano | float16 | 97.189 ms
+
+* The performance in jetson nano was not satisfactory , I will try to optimize it 
 
 ### Details About Wrapper
 
