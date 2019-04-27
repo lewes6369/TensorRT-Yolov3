@@ -22,26 +22,38 @@ vector<float> prepareImage(cv::Mat& img)
 
     float scale = min(float(w)/img.cols,float(h)/img.rows);
     auto scaleSize = cv::Size(img.cols * scale,img.rows * scale);
-
+	//cv::imwrite("resized.jpg",img);
     cv::Mat rgb ;
-    cv::cvtColor(img, rgb, CV_BGR2RGB);
+    //cv::cvtColor(img, rgb, CV_BGR2RGB);
     cv::Mat resized;
-    cv::resize(rgb, resized,scaleSize,0,0,INTER_CUBIC);
-
+    cv::resize(img, resized,scaleSize,0,0,INTER_LINEAR);
+	
+	// Use resize mode "WARP"
+	//cv::Mat cropped(h, w,CV_8UC3, 127);
+	//resized.copyTo(cropped);
+	
     cv::Mat cropped(h, w,CV_8UC3, 127);
     Rect rect((w- scaleSize.width)/2, (h-scaleSize.height)/2, scaleSize.width,scaleSize.height); 
     resized.copyTo(cropped(rect));
 
-    cv::Mat img_float;
+	cv::Mat img_float_t;
+	cv::Mat img_float;
     if (c == 3)
-        cropped.convertTo(img_float, CV_32FC3, 1/255.0);
+        cropped.convertTo(img_float, CV_32FC3, 2/255.0);
     else
-        cropped.convertTo(img_float, CV_32FC1 ,1/255.0);
-
+        cropped.convertTo(img_float, CV_32FC1 ,2/255.0);
+	vector<float> mean_values = {1.0,1.0,1.0};
+	std::vector<cv::Mat> channels;
+	for(int i=0; i<INPUT_CHANNEL; ++i){
+	cv::Mat channel(h, w, CV_32FC1, cv::Scalar(mean_values[i]));
+	channels.push_back(channel);
+	}
+	cv::Mat mean_;
+	cv::merge(channels, mean_);
+	cv::subtract(img_float, mean_, img_float_t);
     //HWC TO CHW
     vector<Mat> input_channels(c);
-    cv::split(img_float, input_channels);
-
+    cv::split(img_float_t, input_channels);
     vector<float> result(h*w*c);
     auto data = result.data();
     int channelLength = h * w;
@@ -335,24 +347,27 @@ int main( int argc, char* argv[] )
     
     net->printTime();        
 
-    if(groundTruth.size() > 0)
+    /*if(groundTruth.size() > 0)
     {
         //eval map
         evalMAPResult(outputs,groundTruth,classNum,0.5f);
         evalMAPResult(outputs,groundTruth,classNum,0.75f);
-    }
+    }*/
 
     if(fileNames.size() == 1)
     {
         //draw on image
         cv::Mat img = cv::imread(*fileNames.begin());
-        auto bbox = *outputs.begin();
-        for(const auto& item : bbox)
-        {
-            cv::rectangle(img,cv::Point(item.left,item.top),cv::Point(item.right,item.bot),cv::Scalar(0,0,255),3,8,0);
-            cout << "class=" << item.classId << " prob=" << item.score*100 << endl;
-            cout << "left=" << item.left << " right=" << item.right << " top=" << item.top << " bot=" << item.bot << endl;
-        }
+        
+		if(outputs.size()) {
+			auto bbox = *outputs.begin();
+			for(const auto& item : bbox)
+			{
+				cv::rectangle(img,cv::Point(item.left,item.top),cv::Point(item.right,item.bot),cv::Scalar(0,0,255),3,8,0);
+				cout << "class=" << item.classId << " prob=" << item.score*100 << endl;
+				cout << "left=" << item.left << " right=" << item.right << " top=" << item.top << " bot=" << item.bot << endl;
+			}
+		}
         cv::imwrite("result.jpg",img);
         cv::imshow("result",img);
         cv::waitKey(0);
