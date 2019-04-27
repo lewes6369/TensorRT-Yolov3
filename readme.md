@@ -73,10 +73,11 @@ Yolov3-416 |  GTX 1080 Ti | int8 | 6.129ms  | li
 
 ### Eval Result
 
-run above models with appending '''--evallist=labels.txt'''
-int8 calibration made from 200 pic selected in val2014 (see scripts dir)
+run above models with appending ```--evallist=labels.txt```
 
-Model | GPU | Mode | dataset | MAP 0.50 | MAP 0.75
+int8 calibration data made from 200 pics selected in val2014 (see scripts dir)
+
+Model | GPU | Mode | dataset | MAP(0.50) | MAP(0.75)
 -- | -- | -- | -- | -- | --
 Yolov3-416 | GTX 1060 | Caffe | COCO val2014 | 81.76 | 52.05
 Yolov3-416 | GTX 1060 | float32 | COCO val2014 | 81.93 | 52.19
@@ -86,7 +87,9 @@ Yolov3-608 | GTX 1060 | float32 | COCO val2014 |  80.6 | 52.43
 Yolov3-608 | GTX 1060 | int8 | COCO val2014 |  85.35 | 56.88 | li
 
 
-Notice: caffe implementation is little different in yolo layer and nms, and it should be the similar result compared to TensorRT fp32. Int8 gets better result in the val dataset the but not certainly in other test data, and exactly it is more often a little worse.
+Notice: 
++ caffe implementation is little different in yolo layer and nms, and it should be the similar result compared to tensorRT fp32. 
++ Int8 mode gets better result in the val dataset, but not certainly in other test data. And exactly it is more often a little worse.
 
 ### Details About Wrapper
 
