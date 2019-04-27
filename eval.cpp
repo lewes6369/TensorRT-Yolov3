@@ -69,7 +69,7 @@ namespace Tn
 
         float* precision = new float[classNum];
         float* recall = new float[classNum];
-        float* AP = new float[classNum];
+        float* AP = new float[classNum]{};
 
         vector<Bbox> **detBox = nullptr;
         vector<Bbox> **truthBox = nullptr;
@@ -141,7 +141,7 @@ namespace Tn
             int total = checkPRBoxs.size();
             if(total == 0)
             {
-                AP[i] = 1;
+                AP[i] = FN > 0 ? 0 : 1;
                 continue;
             }
 

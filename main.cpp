@@ -185,6 +185,8 @@ int main( int argc, char* argv[] )
     parser::ADD_ARG_STRING("outputs",Desc("output nodes name"),DefaultValue(OUTPUTS));
     parser::ADD_ARG_INT("class",Desc("num of classes"),DefaultValue(to_string(DETECT_CLASSES)));
     parser::ADD_ARG_FLOAT("nms",Desc("non-maximum suppression value"),DefaultValue(to_string(NMS_THRESH)));
+    parser::ADD_ARG_INT("batchsize",Desc("batch size for input"),DefaultValue("1"));
+    parser::ADD_ARG_STRING("enginefile",Desc("load from engine"),DefaultValue(""));
 
     //input
     parser::ADD_ARG_STRING("input",Desc("input image file"),DefaultValue(INPUT_IMAGE),ValueDesc("file"));
@@ -197,6 +199,17 @@ int main( int argc, char* argv[] )
 
     parser::parseArgs(argc,argv);
 
+
+    std::unique_ptr<trtNet> net;
+    int batchSize = parser::getIntValue("batchsize"); 
+    string engineName =  parser::getStringValue("enginefile");
+    if(engineName.length() > 0)
+    {
+        net.reset(new trtNet(engineName));
+        assert(net->getBatchSize() == batchSize);
+    }
+    else
+    {
     string deployFile = parser::getStringValue("prototxt");
     string caffemodelFile = parser::getStringValue("caffemodel");
 
@@ -240,19 +253,14 @@ int main( int argc, char* argv[] )
     string outputNodes = parser::getStringValue("outputs");
     auto outputNames = split(outputNodes,',');
     
-    //can load from file
+        //save Engine name
     string saveName = "yolov3_" + mode + ".engine";
-
-//#define LOAD_FROM_ENGINE
-#ifdef LOAD_FROM_ENGINE    
-    trtNet net(saveName);
-#else
-    trtNet net(deployFile,caffemodelFile,outputNames,calibData,run_mode);
+        net.reset(new trtNet(deployFile,caffemodelFile,outputNames,calibData,run_mode,batchSize));
     cout << "save Engine..." << saveName <<endl;
-    net.saveEngine(saveName);
-#endif
+        net->saveEngine(saveName);
+    }
 
-    int outputCount = net.getOutputSize()/sizeof(float);
+    int outputCount = net->getOutputSize()/sizeof(float);
     unique_ptr<float[]> outputData(new float[outputCount]);
 
     string listFile = parser::getStringValue("evallist");
@@ -272,32 +280,60 @@ int main( int argc, char* argv[] )
 
     list<vector<Bbox>> outputs;
     int classNum = parser::getIntValue("class");
-    for (const auto& filename :fileNames)
+    int c = parser::getIntValue("C");
+    int h = parser::getIntValue("H");
+    int w = parser::getIntValue("W");
+    int batchCount = 0;
+    vector<float> inputData;
+    inputData.reserve(h*w*c*batchSize);
+    vector<cv::Mat> inputImgs;
+
+    auto iter = fileNames.begin();
+    for (unsigned int i = 0;i < fileNames.size(); ++i ,++iter)
     {
+        const string& filename  = *iter;
+
         std::cout << "process: " << filename << std::endl;
 
         cv::Mat img = cv::imread(filename);
-        vector<float> inputData = prepareImage(img);
-        if (!inputData.data())
+        vector<float> curInput = prepareImage(img);
+        if (!curInput.data())
+            continue;
+        inputImgs.emplace_back(img);
+
+        inputData.insert(inputData.end(), curInput.begin(), curInput.end());
+        batchCount++;
+
+        if(batchCount < batchSize && i + 1 <  fileNames.size())
             continue;
 
-        net.doInference(inputData.data(), outputData.get());
+        net->doInference(inputData.data(), outputData.get(),batchCount);
 
         //Get Output    
         auto output = outputData.get();
-
+        auto outputSize = net->getOutputSize()/ sizeof(float) / batchCount;
+        for(int i = 0;i< batchCount ; ++i)
+        {    
         //first detect count
-        int count = output[0];
+            int detCount = output[0];
         //later detect result
         vector<Detection> result;
-        result.resize(count);
-        memcpy(result.data(), &output[1], count*sizeof(Detection));
+            result.resize(detCount);
+            memcpy(result.data(), &output[1], detCount*sizeof(Detection));
 
-        auto boxes = postProcessImg(img,result,classNum);
+            auto boxes = postProcessImg(inputImgs[i],result,classNum);
         outputs.emplace_back(boxes);
+
+            output += outputSize;
+        }
+        inputImgs.clear();
+        inputData.clear();
+
+        batchCount = 0;
     }
     
-    net.printTime();        
+    
+    net->printTime();        
 
     if(groundTruth.size() > 0)
     {
