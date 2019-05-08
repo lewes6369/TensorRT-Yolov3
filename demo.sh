@@ -1,2 +1,2 @@
 #./install/runYolov3 --caffemodel=./yolov3_608.caffemodel --prototxt=./yolov3_608_trt.prototxt --input=./test.jpg --W=608 --H=608 --class=80
-./install/runYolov3 --caffemodel=./models/mobilenet_yolov3_deploy_iter_78000.caffemodel --prototxt=./models/mobilenet_yolov3_test.prototxt --input=./test.jpg --W=608 --H=608 --class=80
+./install/runYolov3 --caffemodel=./models/mobilenet_yolov3_lite_deploy.caffemodel --prototxt=./models/mobilenet_yolov3_lite_deploy.prototxt --inputstream=video --videofile=test.avi --W=320 --H=320 --class=20 --classname=voc.names --display=1
