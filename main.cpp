@@ -59,7 +59,7 @@ vector<float> prepareImage(cv::Mat& img)
         cropped.convertTo(img_float, CV_32FC3, 2/255.0);
     else
         cropped.convertTo(img_float, CV_32FC1 ,2/255.0);
-	vector<float> mean_values = {1.0,1.0,1.0};
+	vector<float> mean_values = {0.5,0.5,0.5};
 	std::vector<cv::Mat> channels;
 	for(int i=0; i<INPUT_CHANNEL; ++i){
 	cv::Mat channel(h, w, CV_32FC1, cv::Scalar(mean_values[i]));
