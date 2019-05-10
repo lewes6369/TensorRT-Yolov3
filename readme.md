@@ -77,11 +77,13 @@ Model | GPU | Mode | Inference Time | FPS
 -- | -- | -- | -- | -- |
 Yolov3-608 | GTX 1060(laptop)(win10) | float32 | 58ms | 15
 Yolov3-608 | GTX 1060(laptop)(win10) | int8 | 33ms | 18
-Yolov3-608 | P40 | float32 | 20ms | 40
-Yolov3-608 | P40 | int8 | 13ms | 50
-Yolov3-416 | P40 | float32 | 12ms | 60
-Yolov3-416 | P40 | int8 | 8ms | 70
+Yolov3-tiny-608 | GTX 1060(laptop)(win10) | float32 | 11ms | 30
+Yolov3-608 | P40 | float32 | 20ms | 40(display)
+Yolov3-608 | P40 | int8 | 13ms | 50(display)
+Yolov3-416 | P40 | float32 | 12ms | 60(display)
+Yolov3-416 | P40 | int8 | 8ms | 70(display)
 Yolov3-416 | jeston nano | fp16 | 343ms | 2.8
+
 
 
 
