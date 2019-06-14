@@ -69,7 +69,7 @@ cd ..
 ## example
 
 
-![图片alt](https://github.com/talebolano/TensorRT-Yolov3/tree/master/image/example.png)
+![图片alt](https://raw.githubusercontent.com/talebolano/TensorRT-Yolov3/master/image/example.png)
 
 ### Performance
 
