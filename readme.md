@@ -84,6 +84,9 @@ Yolov3-416 | tensorRT |P40 | float32 | 12ms | 60(display)
 Yolov3-416 | darknet |P40 | float32 | -- | 50(display)
 Yolov3-416 | tensorRT |P40 | int8 | 8ms | 70(display)
 Yolov3-416 | tensorRT |jeston nano | fp16 | 343ms | 2.8
+Yolov3-tiny-416 | darknet | jeston nao | fp32 | -- | 17
+Yolov3-tiny-416 | tensorRT | jeston nao | fp16 | 37ms | 25
+
 
 
 
