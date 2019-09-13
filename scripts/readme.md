@@ -15,5 +15,5 @@ Create labels file for COCO
     ```bash
         # param 1 :input image src folder
         # param 2 :label files folder created by step 1
-       python ./makeList.py {imageFolder} {labelFolder}
+       python ./makelabels.py {imageFolder} {labelFolder}
     ```
