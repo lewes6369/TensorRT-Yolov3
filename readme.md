@@ -79,17 +79,16 @@ int8 calibration data made from 200 pics selected in val2014 (see scripts dir)
 
 Model | GPU | Mode | dataset | MAP(0.50) | MAP(0.75)
 -- | -- | -- | -- | -- | --
-Yolov3-416 | GTX 1060 | Caffe | COCO val2014 | 81.76 | 52.05
-Yolov3-416 | GTX 1060 | float32 | COCO val2014 | 81.93 | 52.19
-Yolov3-416 | GTX 1060 | int8 | COCO val2014 | 86.41 | 57.11
-Yolov3-416 | GTX 1060 | Caffe | COCO val2014 | 80.41 | 52.33
-Yolov3-608 | GTX 1060 | float32 | COCO val2014 |  80.6 | 52.43
-Yolov3-608 | GTX 1060 | int8 | COCO val2014 |  85.35 | 56.88 | li
+Yolov3-416 | GTX 1060 | Caffe(fp32) | COCO val2014 | 50.33 | 33.00
+Yolov3-416 | GTX 1060 | float32 | COCO val2014 | 50.27 | 32.98
+Yolov3-416 | GTX 1060 | int8 | COCO val2014 | 44.15 | 30.24
+Yolov3-608 | GTX 1060 | Caffe(fp32) | COCO val2014 | 52.89 | 35.31
+Yolov3-608 | GTX 1060 | float32 | COCO val2014 |  52.84 | 35.26
+Yolov3-608 | GTX 1060 | int8 | COCO val2014 |  48.55 | 35.53 | li
 
 
 Notice: 
 + caffe implementation is little different in yolo layer and nms, and it should be the similar result compared to tensorRT fp32. 
-+ Int8 mode gets better result in the val dataset, but not certainly in other test data. And exactly it is more often a little worse.
 
 ### Details About Wrapper
 
