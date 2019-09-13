@@ -4,6 +4,7 @@
 #include <vector>
 #include <list>
 #include <string>
+#include <tuple>
 
 namespace Tn
 {

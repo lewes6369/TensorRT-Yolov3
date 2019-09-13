@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <iostream>
 #include <iomanip>
+#include <cmath>
 
 using namespace std;
 
@@ -69,7 +70,7 @@ namespace Tn
 
         float* precision = new float[classNum];
         float* recall = new float[classNum];
-        float* AP = new float[classNum]{};
+        float* AP = new float[classNum];
 
         vector<Bbox> **detBox = nullptr;
         vector<Bbox> **truthBox = nullptr;
@@ -141,17 +142,17 @@ namespace Tn
             int total = checkPRBoxs.size();
             if(total == 0)
             {
-                AP[i] = FN > 0 ? 0 : 1;
+                AP[i] = 1;
                 continue;
             }
 
             //recall:         
-            recall[i] = (abs(TP + FN) < 1e-5) ? 1 : TP / (TP + FN);
+            recall[i] = (std::fabs(TP + FN) < 1e-5) ? 1 : TP / (TP + FN);
             //precision
             precision[i] = TP / total;
 
             //compute AP:
-            sort(checkPRBoxs.begin(),checkPRBoxs.end(),[](CheckPair& left,CheckPair& right){
+            sort(checkPRBoxs.begin(),checkPRBoxs.end(),[](const CheckPair& left,const CheckPair& right){
                 return left.first.score > right.first.score;
                 }
             );
@@ -162,18 +163,16 @@ namespace Tn
             for (const auto& item : checkPRBoxs)
             {
                 item.second ? ++PR_TP : ++PR_FP;
-                PRValues.emplace_back( make_pair(PR_TP/ float(PR_TP+PR_FP) , PR_TP / float(total)) );
+                PRValues.emplace_back( make_pair(PR_TP/ static_cast<float>(PR_TP+PR_FP) , float(PR_TP)/(TP + FN)));
             }
             
             float sum = PRValues[0].first * PRValues[0].second;
-
             for (unsigned int m = 0; m < PRValues.size()-1;++m)
             {
                 float w = PRValues[m + 1].second - PRValues[m].second ;
                 float h = PRValues[m + 1].first;
                 sum += w*h;
             }
-            
             AP[i] = sum;
 
             cout<< setprecision(4) << "class:" << std::setw(3) << i 
