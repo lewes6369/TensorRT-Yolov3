@@ -231,6 +231,11 @@ int main( int argc, char* argv[] )
         while( getline(file,strLine) )                               
         { 
             cv::Mat img = cv::imread(strLine);
+            if (img.empty())
+            {
+                std::cerr << "fail to load image:" << strLine << std::endl;
+                continue;
+            }
             auto data = prepareImage(img);
             calibData.emplace_back(data);
         } 
@@ -296,9 +301,12 @@ int main( int argc, char* argv[] )
         std::cout << "process: " << filename << std::endl;
 
         cv::Mat img = cv::imread(filename);
+	    if (img.empty())
+		{
+			std::cerr << "fail to load image:" << filename << std::endl;
+			continue;
+        }
         vector<float> curInput = prepareImage(img);
-        if (!curInput.data())
-            continue;
         inputImgs.emplace_back(img);
 
         inputData.insert(inputData.end(), curInput.begin(), curInput.end());
@@ -314,15 +322,15 @@ int main( int argc, char* argv[] )
         auto outputSize = net->getOutputSize()/ sizeof(float) / batchCount;
         for(int i = 0;i< batchCount ; ++i)
         {    
-        //first detect count
+            //first detect count
             int detCount = output[0];
-        //later detect result
-        vector<Detection> result;
+            //later detect result
+            vector<Detection> result;
             result.resize(detCount);
             memcpy(result.data(), &output[1], detCount*sizeof(Detection));
 
             auto boxes = postProcessImg(inputImgs[i],result,classNum);
-        outputs.emplace_back(boxes);
+            outputs.emplace_back(boxes);
 
             output += outputSize;
         }
